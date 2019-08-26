@@ -1,4 +1,5 @@
 import urllib.parse as prs
+from shutil import copyfile
 from operator import itemgetter
 import os
 
@@ -50,7 +51,8 @@ def convert_to_excel(df, file_name):
 
 def convert_from_chls_to_txt(file_name):
     head, sep, tail = file_name.partition('.')
-    json_friendly = os.rename(file_name, head + '.txt')
+    copyfile(file_name, head + '.txt')
+    # json_friendly = os.rename(file_name, head + '.txt')
     return head
 
 
