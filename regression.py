@@ -9,18 +9,13 @@ import pandas as pd
 # file1 = 'JS-2-prod.txt'
 # file2 = 'JS-2-staging.txt'
 
-list_of_keys1 = ['pageName', 'channel', 'prevPageName', 'pageView', 'webVersion', 'templateType', 'pageSeries', 'franchise', 'pageSeries', 'playerVersion', 'pageType', 'pageEvent', 'pageURL', 'brandID']
-
-
 def create_parsed_dicts(file, list_of_var=None):
     """Parse file and create list of dictionaries of url parameters, if key 'pageName' is present"""
     req = []
     firstlines = []
     parsed_urls = []
     with_pageName_urls = []
-    # list_of_keys = ['pageName', 'channel', 'prevPageName', 'pageView', 'webVersion', 'templateType', 'pageSeries', 'franchise', 'pageSeries', 'playerVersion', 'pageType', 'pageEvent', 'pageURL', 'brandID']
-    list_of_keys = ['activity', 'appName' , 'authSuiteID', 'coppa', 'epmgid', 'offlineMode', 'profileID', 'pv', 'regStatus', 'subscriptionID', 'subscriptionSKU', 'subscriptionStatus', 'tveUsrStat', 'timeSpent', 'TimeStamp', 'authSuiteModalName', 'tvemvpd', 'tvestep', 'videptitle', 'vidfranchise']
-    lower_list_of_keys = [i.lower() for i in list_of_keys]
+    lower_list_of_keys = [i.lower() for i in list_of_var]
     specified_key_list_of_dicts = []
 
     with open(file) as json_file:
@@ -41,10 +36,11 @@ def create_parsed_dicts(file, list_of_var=None):
     for p in parsed_urls:
         p = {k.lower(): v for k,v in p.items()}
         specified = {}
-        index = [ky for ky,va in p.items() if ky.startswith('get')]
-        for k in lower_list_of_keys:
-            specified.update({k: p.get(k, p.get(k, "Not Present"))})
-        specified_key_list_of_dicts.append({"call": index[0], "p": specified})
+        index = [ky for ky,va in p.items() if ky.startswith('get ')]
+        if len(index) > 0:
+            for k in lower_list_of_keys:
+                specified.update({k: p.get(k, p.get(k, "Not Present"))})
+            specified_key_list_of_dicts.append({"call": index[0], "p": specified})
 
     return specified_key_list_of_dicts
 
@@ -69,7 +65,11 @@ def convert_to_dataframe(parsed_dicts, list_of_keys):
 
     # print(indices)
     df = pd.DataFrame({k:v for k, v in flatten(kv)} for kv in parsed_dicts)
-    return df
+    df.index = df['call']
+    df.index.names = [None]
+    del df['call']
+    result = df.transpose()
+    return result
 
 def convert_to_excel(df, file_name):
     """Converts Pandas DataFrame to Excel readable format"""
@@ -97,23 +97,29 @@ def regression():
     print("")
     file1 = input('Please enter the name of the PRODUCTION chslj file you want to read: ')
     file2 = input('Please enter the name of the STAGING chslj file you would like to read: ')
-
+    user_input_list_of_keys = input('Please enter comma separated list of variables you wish to check for(variable1, variable2,...etc.): ')
+    print("-----------------------------------")
+    holding = user_input_list_of_keys.split(",")
+    user_input_list_of_keys = [i.strip() for i in holding]
+    # print(user_input_list_of_keys)
+    # return
     prod_xlsx_name = input('Please enter the xlsx file name you would like to create after reading the PRODUCTION file: ')
     staging_xlsx_name = input('Please enter the xlsx file name you would like to create after reading the STAGING file: ')
 
     try:
         json_txt_prod = convert_from_chls_to_txt(file1)
-        json_txt_prod = json_txt_prod + '.txt'
+        # json_txt_prod = json_txt_prod + '.txt'
         json_txt_staging = convert_from_chls_to_txt(file2)
-        json_txt_staging = json_txt_staging + '.txt'
+        # json_txt_staging = json_txt_staging + '.txt'
     except:
-        print("There is something wrong with the chls file")
+        print("There is something wrong with the chlsj file")
 
-    prod = create_parsed_dicts(json_txt_prod)
-    staging = create_parsed_dicts(json_txt_staging)
-
-    df_prod = convert_to_dataframe(prod)
-    df_staging = convert_to_dataframe(staging)
+    prod = create_parsed_dicts(json_txt_prod, list_of_var=user_input_list_of_keys)
+    staging = create_parsed_dicts(json_txt_staging, list_of_var=user_input_list_of_keys)
+    lower_list_keys_prod = list(prod[0].keys())
+    lower_list_keys_staging = list(staging[0].keys())
+    df_prod = convert_to_dataframe(prod, lower_list_keys_prod)
+    df_staging = convert_to_dataframe(staging, lower_list_keys_staging)
 
     prod_excel = convert_to_excel(df_prod, prod_xlsx_name)
     staging_excel = convert_to_excel(df_staging, staging_xlsx_name)
@@ -123,19 +129,21 @@ def spec_compare():
     print("")
     print("")
     print("--------------------PLEASE READ BEFORE MOVING FORWARD----------------------------------------")
-    file1 = 'WEBPLEX-7091.chlsj'
+    file1 = input('Please enter the name of the chslj file you want to read: ')
+    # list_of_keys = ['activity', 'appName' , 'authSuiteID', 'coppa', 'epmgid', 'offlineMode', 'profileID', 'pv', 'regStatus', 'subscriptionID', 'subscriptionSKU', 'subscriptionStatus', 'tveUsrStat', 'timeSpent', 'TimeStamp', 'authSuiteModalName', 'tvemvpd', 'tvestep', 'videptitle', 'vidfranchise']
+    user_input_list_of_keys = input('Please enter comma separated list of variables you wish to check for(variable1, variable2,...etc.): ')
+    print("-----------------------------------")
+    new_file_name = input('Please enter the xlsx file name you would like to create after reading:')
+
+    holding = user_input_list_of_keys.split(",")
+    user_input_list_of_keys = [i.strip() for i in holding]
+
     file_converted = convert_from_chls_to_txt(file1)
-    parsed = create_parsed_dicts(file_converted)    # print(parsed[0])
+    parsed = create_parsed_dicts(file_converted, list_of_var=user_input_list_of_keys)    # print(parsed[0])
     lower_list_of_keys = list(parsed[0].keys())
-    # print(parsed[0])
-    # return
-    print(parsed)
     df = convert_to_dataframe(parsed, lower_list_of_keys)
-    # return
-    convert_to_excel(df, 'tester.xlsx')
-    # param = list_of_keys[0]
-    # df.pivot(index='')
-    # print(df)
+    convert_to_excel(df, new_file_name)
+
 
 
 def main():
@@ -145,6 +153,8 @@ def main():
         regression()
     elif program_to_run == '2':
         spec_compare()
+
+
 if __name__ == "__main__":
     program_to_run = input("(1)REGRESSION or (2)SPEC COMPARE: ")
     if program_to_run == '1':
